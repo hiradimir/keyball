@@ -33,9 +33,11 @@ const uint16_t AML_TIMEOUT_MIN = 100;
 const uint16_t AML_TIMEOUT_MAX = 1000;
 const uint16_t AML_TIMEOUT_QU  = 50;   // Quantization Unit
 
+#ifdef OLED_ENABLE
 static const char BL = '\xB0'; // Blank indicator character
 static const char LFSTR_ON[] PROGMEM = "\xB2\xB3";
 static const char LFSTR_OFF[] PROGMEM = "\xB4\xB5";
+#endif
 
 keyball_t keyball = {
     .this_have_ball = false,
@@ -46,12 +48,15 @@ keyball_t keyball = {
     .that_motion = {0},
 
     .cpi_value   = 0,
+    .cpi_double = false,
     .cpi_changed = false,
 
     .scroll_mode = false,
     .scroll_div  = 0,
 
+#ifdef OLED_ENABLE
     .pressing_keys = { BL, BL, BL, BL, BL, BL, 0 },
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -174,6 +179,11 @@ __attribute__((weak)) void keyball_on_apply_motion_to_mouse_move(keyball_motion_
         r->x = -r->x;
         r->y = -r->y;
     }
+    if (keyball.cpi_double) {
+        r->x = r->x*2;
+        r->y = r->y*2;
+    }
+
 #elif KEYBALL_MODEL == 46
     r->x = clip2int8(m->x);
     r->y = -clip2int8(m->y);
@@ -605,6 +615,7 @@ void housekeeping_task_kb(void) {
 }
 #endif
 
+#ifdef OLED_ENABLE
 static void pressing_keys_update(uint16_t keycode, keyrecord_t *record) {
     // Process only valid keycodes.
     if (keycode >= 4 && keycode < 57) {
@@ -624,11 +635,15 @@ static void pressing_keys_update(uint16_t keycode, keyrecord_t *record) {
         }
     }
 }
+#endif
 
 #ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
 bool is_mouse_record_kb(uint16_t keycode, keyrecord_t* record) {
     switch (keycode) {
         case SCRL_MO:
+        case SSNP_HOR:
+        case SSNP_VRT:
+        case SSNP_FRE:
             return true;
     }
     return is_mouse_record_user(keycode, record);
@@ -640,7 +655,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
     keyball.last_kc  = keycode;
     keyball.last_pos = record->event.key;
 
+#ifdef OLED_ENABLE
     pressing_keys_update(keycode, record);
+#endif
 
     if (!process_record_user(keycode, record)) {
         return false;
@@ -668,6 +685,27 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
             // process_auto_mouse may use this in future, if changed order of
             // processes.
             return true;
+
+#if KEYBALL_SCROLLSNAP_ENABLE == 2
+
+        case SSNP_HOR:
+            keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_HORIZONTAL);
+            keyball_set_scroll_mode(record->event.pressed);
+            return true;
+
+        case SSNP_VRT: 
+            keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_VERTICAL);
+            keyball_set_scroll_mode(record->event.pressed);
+            return true;
+            
+        case SSNP_FRE:
+            keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_FREE);
+            keyball_set_scroll_mode(record->event.pressed);
+            return true;
+        case CPI_IMO:
+            keyball.cpi_double = record->event.pressed;
+            return true;
+#endif
     }
 
     // process events which works on pressed only.
@@ -719,17 +757,17 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 add_scroll_div(-1);
                 break;
 
-#if KEYBALL_SCROLLSNAP_ENABLE == 2
-            case SSNP_HOR:
-                keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_HORIZONTAL);
-                break;
-            case SSNP_VRT:
-                keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_VERTICAL);
-                break;
-            case SSNP_FRE:
-                keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_FREE);
-                break;
-#endif
+// #if KEYBALL_SCROLLSNAP_ENABLE == 2
+//             case SSNP_HOR:
+//                 keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_HORIZONTAL);
+//                 break;
+//             case SSNP_VRT:
+//                 keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_VERTICAL);
+//                 break;
+//             case SSNP_FRE:
+//                 keyball_set_scrollsnap_mode(KEYBALL_SCROLLSNAP_MODE_FREE);
+//                 break;
+// #endif
 
 #ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
             case AML_TO:
