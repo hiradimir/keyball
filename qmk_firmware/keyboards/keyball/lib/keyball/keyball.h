@@ -97,6 +97,7 @@ enum keyball_keycodes {
     CPI_D100 = QK_KB_3, // CPI -100 CPI
     CPI_I1K  = QK_KB_4, // CPI +1000 CPI
     CPI_D1K  = QK_KB_5, // CPI -1000 CPI
+    CPI_IMO  = QK_KB_16,// Momentary CPI *2 
 
     // In scroll mode, motion from primary trackball is treated as scroll
     // wheel.
@@ -160,6 +161,8 @@ typedef struct {
     keyball_motion_t that_motion;
 
     uint8_t cpi_value;
+    bool    cpi_double;
+
     bool    cpi_changed;
 
     bool     scroll_mode;
